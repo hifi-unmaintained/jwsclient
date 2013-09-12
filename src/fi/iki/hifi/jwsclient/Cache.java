@@ -17,12 +17,17 @@ package fi.iki.hifi.jwsclient;
 
 import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.channels.FileChannel;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -72,6 +77,10 @@ public class Cache {
         System.out.println("Cache initialized at " + root);
     }
 
+    public String getRoot() {
+        return root;
+    }
+
     public File fromURL(URL url) {
         StringBuilder path = new StringBuilder();
 
@@ -92,6 +101,41 @@ public class Cache {
             path.append(File.separator);
             path.append(part);
         }
+
+        File localFile = new File(path.toString());
+        File localPath = new File(localFile.getParent());
+
+        if (!localPath.exists() && !localPath.mkdirs())
+                throw new Error("Failed to create cache path: " + localFile.getParent());
+
+        return localFile;
+    }
+
+    public File fromFile(File file) throws NoSuchAlgorithmException, FileNotFoundException, IOException {
+
+        if (!file.isFile())
+            throw new IllegalArgumentException("File must be a regular file.");
+
+        FileInputStream is = new FileInputStream(file);
+        MessageDigest md = MessageDigest.getInstance("SHA-1");
+        StringBuilder path = new StringBuilder();
+
+        path.append(root);
+        path.append(File.separator);
+
+        byte[] buf = new byte[4096];
+        int len;
+        while ((len = is.read(buf)) != -1) {
+            md.update(buf, 0, len);
+        }
+
+        byte[] digest = md.digest();
+        for (int i = 0; i < digest.length; i++) {
+            path.append(String.format("%02x", (int)digest[i] & 0xFF));
+        }
+
+        path.append(File.separator);
+        path.append(file.getName());
 
         File localFile = new File(path.toString());
         File localPath = new File(localFile.getParent());
@@ -216,6 +260,32 @@ public class Cache {
         if (lw != null) {
             lw.setStatus(null);
             lw.enableProgress(false);
+        }
+
+        return dst;
+    }
+
+    public File copy(File file) throws IOException, NoSuchAlgorithmException {
+        File dst = fromFile(file);
+
+        FileChannel srcChannel = null;
+        FileChannel dstChannel = null;
+
+        try {
+            srcChannel = new FileInputStream(file).getChannel();
+            dstChannel = new FileOutputStream(dst).getChannel();
+            dstChannel.transferFrom(srcChannel, 0, srcChannel.size());
+        } catch (IOException e) {
+            if (dstChannel != null)
+                dstChannel.close();
+            if (dst.exists())
+                dst.delete();
+        } finally {
+            if (srcChannel != null)
+                srcChannel.close();
+
+            if (dstChannel != null)
+                dstChannel.close();
         }
 
         return dst;

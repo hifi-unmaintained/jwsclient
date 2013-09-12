@@ -23,12 +23,10 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 /**
  *
@@ -90,6 +88,20 @@ final public class JNLP {
                         return null;
                     }
                 }
+            }
+        }
+
+        return null;
+    }
+
+    public String getTitle() {
+        NodeList nl = information.getChildNodes();
+        Node node;
+        int i = 0;
+        while ((node = nl.item(i++)) != null) {
+            String tag = node.getNodeName().toLowerCase();
+            if (tag.equalsIgnoreCase("title")) {
+                return node.getFirstChild().getNodeValue();
             }
         }
 

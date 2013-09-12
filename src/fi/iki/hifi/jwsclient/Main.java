@@ -16,15 +16,18 @@
 package fi.iki.hifi.jwsclient;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLDecoder;
 import java.util.List;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
+import javax.swing.filechooser.FileSystemView;
 
 /**
  *
@@ -106,6 +109,37 @@ public class Main {
 
             System.out.println("Invoking main() on " + client.getName());
             mainMethod.invoke(null, new Object[]{ jnlp.getMainArguments() });
+
+            // shortcut creation using .url files on Windows
+            File jarFile = new File(URLDecoder.decode(Main.class.getProtectionDomain().getCodeSource().getLocation().getPath(), "UTF-8"));
+
+            System.out.println("Checking if we are not running from cache, wrapped and shortcut exists...");
+            if (!jarFile.toString().startsWith(cache.getRoot()) && jarFile.toString().endsWith(".exe")) {
+                String operatingSystem = System.getProperty("os.name");
+
+                if (operatingSystem.startsWith("Windows")) {
+                    File desktopFile = FileSystemView.getFileSystemView().getHomeDirectory();
+                    File shortcutFile = new File(desktopFile + File.separator + jnlp.getTitle() + ".url");
+
+                    if (!shortcutFile.exists()) {
+
+                        File cacheFile = cache.fromFile(jarFile);
+                        if (!cacheFile.exists()) {
+                            cache.copy(jarFile);
+                        }
+
+                        System.out.println("Creating shortcut to " + cacheFile);
+
+                        FileWriter fw = new FileWriter(shortcutFile);
+                        fw.append("[InternetShortcut]\r\n");
+                        fw.append("URL=" + cacheFile.toURI() + "\r\n");
+                        fw.append("WorkingDirectory=" + cacheFile.getParent() + "\r\n");
+                        fw.append("IconIndex=0\r\n");
+                        fw.append("IconFile=" + cacheFile + "\r\n");
+                        fw.close();
+                    }
+                }
+            }
 
             // after main returns, do our background updating
             System.out.println("Doing background update...");
