@@ -192,6 +192,9 @@ public class Cache {
             con.addRequestProperty("If-Modified-Since", df.format(new Date(dst.lastModified())));
         }
 
+        con.setReadTimeout(5000);
+        con.setConnectTimeout(5000);
+
         con.connect();
 
         if (con.getResponseCode() == 304) {

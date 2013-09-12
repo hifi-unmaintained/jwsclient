@@ -144,14 +144,19 @@ public class Main {
             // after main returns, do our background updating
             System.out.println("Doing background update...");
 
-            cache.download(jnlpURL, true);
-            if (splashURL != null)
-                cache.download(splashURL, true);
+            try {
+                cache.download(jnlpURL, true);
+                if (splashURL != null)
+                    cache.download(splashURL, true);
 
-            for (URL jar : jarList)
-                cache.download(jar, true);
+                for (URL jar : jarList)
+                    cache.download(jar, true);
 
-            System.out.println("Done! Quitting.");
+                System.out.println("Done! Quitting.");
+            } catch (IOException e) {
+                System.out.println("Background update failed: " + e.getMessage());
+            }
+
 
         } catch (Exception e) {
             e.printStackTrace();
